@@ -82,7 +82,7 @@ class CreateOrganization extends React.Component {
   render() {
     const { LoggedInUser } = this.props;
 
-    const title = 'Create a new organization';
+    const title = 'Create organization';
 
     return (
       <div className="CreateOrganization">
@@ -94,17 +94,11 @@ class CreateOrganization extends React.Component {
         />
 
         <Body>
-          <Container mt={2} mb={2}>
-            <H1 fontSize={['24px', '40px']} lineHeight={3} fontWeight="bold" textAlign="center" color="black.900">
+          {/* <Container mt={2} mb={2}>
+            <H1 fontSize="28px" lineHeight={3} fontWeight="bold" textAlign="center" color="black.900">
               {title}
             </H1>
-            <P textAlign="center">
-              <FormattedMessage
-                id="collectives.create.description"
-                defaultMessage="An Organization allows you to make financial contributions as a company or team. You can also add a credit card with a monthly limit that team members can use to make contributions."
-              />
-            </P>
-          </Container>
+          </Container> */}
 
           <div className="content">
             {!LoggedInUser && (

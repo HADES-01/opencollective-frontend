@@ -1,289 +1,349 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { get } from 'lodash';
+import themeGet from '@styled-system/theme-get';
+import { Field, Form, Formik } from 'formik';
+import { trim } from 'lodash';
+import { withRouter } from 'next/router';
 import { defineMessages, FormattedMessage, injectIntl } from 'react-intl';
+import slugify from 'slugify';
+import styled from 'styled-components';
 
-import { defaultBackgroundImage } from '../lib/constants/collectives';
-
-import InputField from './InputField';
+import Avatar from './Avatar';
+import Container from './Container';
+import { Box, Flex } from './Grid';
 import StyledButton from './StyledButton';
 import StyledCheckbox from './StyledCheckbox';
+import StyledHr from './StyledHr';
+import StyledInput from './StyledInput';
+import StyledInputField from './StyledInputField';
+import StyledInputGroup from './StyledInputGroup';
 import StyledLink from './StyledLink';
+import StyledTag from './StyledTag';
+import { H1, P, H4 } from './Text';
 
-class CreateOrganizationForm extends React.Component {
-  static propTypes = {
-    collective: PropTypes.object,
-    loading: PropTypes.bool,
-    onSubmit: PropTypes.func,
-    intl: PropTypes.object.isRequired,
+const Wrapper = styled(Container)`
+  display: flex;
+  background-color: #e1e4e6;
+`;
+const BackButton = styled(StyledButton)`
+  color: ${themeGet('colors.black.600')};
+  font-size: 14px;
+`;
+
+const messages = defineMessages({
+  nameLabel: { id: 'createOrg.form.nameLabel', defaultMessage: "What's the name of your organization?" },
+  urlLabel: { id: 'createOrg.form.urlLabel', defaultMessage: 'What URL would you like?' },
+  websiteLabel: { id: 'createOrg.form.webstiteLabel', defaultMessage: "What's your Organization's website" },
+  suggestedLabel: { id: 'createOrg.form.suggestedLabel', defaultMessage: 'Suggested' },
+  descriptionLabel: {
+    id: 'createOrg.form.descriptionLabel',
+    defaultMessage: 'What does your organization do?',
+  },
+  descriptionHint: {
+    id: 'createOrg.form.descriptionHint',
+    defaultMessage: 'Write a short description of your Organization (150 characters max)',
+  },
+  descriptionPlaceholder: {
+    id: 'create.org.placeholder',
+    defaultMessage: 'Making the world a better place',
+  },
+  errorName: {
+    id: 'createOrg.form.error.name',
+    defaultMessage: 'Please use fewer than 50 characters',
+  },
+  errorDescription: {
+    id: 'createOrg.form.error.description',
+    defaultMessage: 'Please use fewer than 160 characters',
+  },
+  errorSlug: {
+    id: 'createOrg.form.error.slug',
+    defaultMessage: 'Please use fewer than 30 characters',
+  },
+});
+
+const placeholders = {
+  name: 'i.e. Salesforce, Airbnb',
+  url: 'airbnb',
+  description: 'Making a world a better place',
+  website: 'www.airbnb.com',
+  username: 'User name',
+};
+
+const formatGithubRepoName = repoName => {
+  // replaces dash and underscore with space, then capitalises the words
+  return repoName.replace(/[-_]/g, ' ').replace(/(?:^|\s)\S/g, words => words.toUpperCase());
+};
+
+function CreateOrganizationForm(props) {
+  const { intl, error, host, loading, github, router } = props;
+  const [tos, setTos] = useState('');
+
+  const submit = values => {
+    const { description, name, slug } = values;
+    // const { tos, hostTos } = this.state;
+    // this.props.onSubmit({ name, description, slug, tos, hostTos });
   };
+  const initialValues = {
+    name: github ? formatGithubRepoName(github.repo) : '',
+    description: '',
+    slug: github ? github.repo : '',
+  };
+  const validate = values => {
+    const errors = {};
 
-  constructor(props) {
-    super(props);
-    this.defineFields = this.defineFields.bind(this);
-    this.addLabels = this.addLabels.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
-    this.handleChange = this.handleChange.bind(this);
-    this.handleObjectChange = this.handleObjectChange.bind(this);
-
-    const collective = { ...(props.collective || {}) };
-    collective.slug = collective.slug ? collective.slug.replace(/.*\//, '') : '';
-
-    this.messages = defineMessages({
-      'name.label': { id: 'Fields.name', defaultMessage: 'Name' },
-      'description.label': {
-        id: 'collective.description.label',
-        defaultMessage: 'Short description',
-      },
-      'website.label': {
-        id: 'Fields.website',
-        defaultMessage: 'Website',
-      },
-      'website.description': {
-        id: 'collective.website.description',
-        defaultMessage: 'Enter the URL of your website or Facebook Page',
-      },
-      'tags.label': { id: 'Tags', defaultMessage: 'Tags' },
-      'tags.description': {
-        id: 'collective.tags.description',
-        defaultMessage: 'Tags helps people discover your collective',
-      },
-      'tos.label': {
-        id: 'collective.tos.label',
-        defaultMessage: 'Terms of Service',
-      },
-    });
-
-    collective.backgroundImage = collective.backgroundImage || defaultBackgroundImage[collective.type];
-
-    this.masterKey = '';
-    this.state = { modified: false, collective };
-    this.defineFields();
-    this.addLabels();
-  }
-
-  componentDidUpdate(prevProps) {
-    if (
-      this.props.collective &&
-      (!prevProps.collective || get(this.props, 'collective.name') !== get(prevProps, 'collective.name'))
-    ) {
-      this.setState({
-        collective: this.props.collective,
-        tiers: this.props.collective.tiers,
-      });
+    if (values.name.length > 50) {
+      errors.name = intl.formatMessage(messages.errorName);
     }
-  }
 
-  defineFields() {
-    this.fields = {
-      info: [
-        {
-          name: 'name',
-          placeholder: '',
-          maxLength: 255,
-        },
-        {
-          name: 'description',
-          type: 'text',
-          maxLength: 255,
-          placeholder: '',
-        },
-        {
-          name: 'website',
-          type: 'text',
-          maxLength: 255,
-          placeholder: '',
-        },
-        {
-          name: 'tags',
-          placeholder: 'civic tech, open source, vegan',
-          maxLength: 255,
-          type: 'tags',
-        },
-      ],
-    };
+    if (values.slug.length > 30) {
+      errors.slug = intl.formatMessage(messages.errorSlug);
+    }
+    if (values.slug !== trim(values.slug, '-')) {
+      errors.slug = intl.formatMessage(messages.errorSlugHyphen);
+    }
 
-    this.addLabels();
-  }
+    if (values.description.length > 160) {
+      errors.description = intl.formatMessage(messages.errorDescription);
+    }
 
-  addLabels() {
-    const { intl } = this.props;
-    Object.keys(this.fields).map(key => {
-      this.fields[key] = this.fields[key].map(field => {
-        if (this.messages[`${field.name}.label`]) {
-          field.label = intl.formatMessage(this.messages[`${field.name}.label`]);
-        }
-        if (this.messages[`${field.name}.description`]) {
-          field.description = intl.formatMessage(this.messages[`${field.name}.description`]);
-        }
-        this.state.collective[field.name] = this.state.collective[field.name] || field.defaultValue;
-        return field;
-      });
-    });
-  }
-
-  handleChange(fieldname, value) {
-    const collective = {};
-    collective[fieldname] = value;
-    this.setState({
-      modified: true,
-      collective: Object.assign({}, this.state.collective, collective),
-    });
-  }
-
-  handleObjectChange(obj) {
-    this.setState({ ...obj, modified: true });
-  }
-
-  async handleSubmit() {
-    this.props.onSubmit(this.state.collective);
-    this.setState({ modified: false });
-  }
-
-  render() {
-    const { loading, intl } = this.props;
-
-    return (
-      <div className="CreateCollectiveForm">
-        <style jsx>
-          {`
-            :global(.field) {
-              margin: 1rem;
+    return errors;
+  };
+  return (
+    <Flex flexDirection="column" m={[3, 0]}>
+      <Flex flexDirection="column" m={[3, 0]}>
+        <Flex flexDirection="column" my={[2, 4]}>
+          <Box textAlign="left" minHeight="32px">
+            <BackButton asLink onClick={() => window && window.history.back()}>
+              ←&nbsp;
+              <FormattedMessage id="Back" defaultMessage="Back" />
+            </BackButton>
+          </Box>
+          <Box mb={[2, 3]}>
+            <H1
+              fontSize={['20px', '32px']}
+              lineHeight={['24px', '36px']}
+              fontWeight="bold"
+              textAlign="center"
+              color="black.900"
+            >
+              <FormattedMessage id="create.org.title" defaultMessage="Create Organization" />
+            </H1>
+          </Box>
+        </Flex>
+      </Flex>
+      <Formik validate={validate} initialValues={initialValues} onSubmit={submit} validateOnChange={true}>
+        {formik => {
+          const { values, handleSubmit, errors, touched, setFieldValue } = formik;
+          const handleSlugChange = e => {
+            if (!touched.slug) {
+              setFieldValue('slug', suggestedSlug(e.target.value));
             }
-            :global(label) {
-              display: inline-block;
-              vertical-align: top;
-            }
-            :global(input),
-            select,
-            :global(textarea) {
-              width: 300px;
-              font-size: 1.5rem;
-            }
-
-            .FormInputs {
-              max-width: 700px;
-              margin: 0 auto;
-              overflow-x: hidden;
-            }
-
-            .actions {
-              margin: 5rem auto 1rem;
-              text-align: center;
-            }
-            .backToProfile {
-              font-size: 1.3rem;
-              margin: 1rem;
-            }
-            input[type='checkbox'] {
-              width: 25px;
-            }
-          `}
-        </style>
-        <style global jsx>
-          {`
-            section#location {
-              margin-top: 0;
-            }
-
-            .image .InputTypeDropzone {
-              width: 100px;
-            }
-
-            .backgroundImage-dropzone {
-              max-width: 500px;
-              overflow: hidden;
-            }
-
-            .user .image-dropzone {
-              width: 64px;
-              height: 64px;
-              border-radius: 50%;
-              overflow: hidden;
-            }
-
-            .menu {
-              text-align: center;
-              margin: 1rem 0 3rem 0;
-            }
-          `}
-        </style>
-        <div className="FormInputs">
-          <div>
-            {Object.keys(this.fields).map(key => (
-              <div className="inputs" key={key}>
-                {this.fields[key].map(
-                  field =>
-                    (!field.when || field.when()) && (
-                      <InputField
-                        key={`${this.masterKey}-${field.name}`}
-                        value={this.state.collective[field.name]}
-                        className={field.className}
-                        defaultValue={this.state.collective[field.name] || field.defaultValue}
-                        validate={field.validate}
-                        ref={field.name}
-                        name={field.name}
-                        focus={field.focus}
-                        label={field.label}
-                        description={field.description}
-                        options={field.options}
-                        placeholder={field.placeholder}
-                        type={field.type}
-                        help={field.help}
-                        pre={field.pre}
-                        context={this.state.collective}
-                        onChange={value => this.handleChange(field.name, value)}
-                        maxLength={field.maxLength}
+          };
+          return (
+            <Form>
+              <Container flexDirection="column" justifyContent="center" px={[1, 30, 150]}>
+                <Container display="flex" flexDirection={['column', 'row', 'row']}>
+                  <Flex
+                    flexDirection="column"
+                    mx={[1, 10, 15]}
+                    width={[320, 350, 376, 476]}
+                    justifyContent="space-around"
+                  >
+                    <H4>
+                      <FormattedMessage id="organization.info.headline" defaultMessage="Organization's information" />
+                    </H4>
+                    <StyledInputField
+                      name="name"
+                      htmlFor="name"
+                      error={touched.name && errors.name}
+                      label={intl.formatMessage(messages.nameLabel)}
+                      value={values.name}
+                      onChange={handleSlugChange}
+                      required
+                      mt={4}
+                      mb={3}
+                      data-cy="ccf-form-name"
+                    >
+                      {inputProps => <Field as={StyledInput} {...inputProps} placeholder={placeholders.name} />}
+                    </StyledInputField>
+                    <StyledInputField
+                      name="slug"
+                      htmlFor="slug"
+                      error={touched.url && errors.url}
+                      label={intl.formatMessage(messages.urlLabel)}
+                      value={values.url}
+                      required
+                      mt={3}
+                      mb={2}
+                      data-cy="cof-form-url"
+                    >
+                      {inputProps => (
+                        <Field
+                          onChange={e => {
+                            setFieldValue('slug', e.target.value);
+                          }}
+                          as={StyledInputGroup}
+                          {...inputProps}
+                          prepend="opencollective.com/"
+                          placeholder={placeholders.url}
+                        />
+                      )}
+                    </StyledInputField>
+                    {values.name.length > 0 && !touched.slug && (
+                      <P fontSize="10px">{intl.formatMessage(messages.suggestedLabel)}</P>
+                    )}
+                    <StyledInputField
+                      name="description"
+                      htmlFor="description"
+                      error={touched.description && errors.description}
+                      label={intl.formatMessage(messages.descriptionLabel)}
+                      value={values.description}
+                      required
+                      mt={3}
+                      mb={2}
+                      data-cy="c0f-org-description"
+                    >
+                      {inputProps => (
+                        <Field
+                          as={StyledInput}
+                          {...inputProps}
+                          placeholder={intl.formatMessage(messages.descriptionPlaceholder)}
+                        />
+                      )}
+                    </StyledInputField>
+                    <P fontSize="11px">{intl.formatMessage(messages.descriptionHint)}</P>
+                    <StyledInputField
+                      name="website"
+                      htmlFor="website"
+                      error={touched.website && errors.website}
+                      label={intl.formatMessage(messages.websiteLabel)}
+                      value={values.website}
+                      required
+                      mt={3}
+                      mb={2}
+                      data-cy="ccf-org-website"
+                    >
+                      {inputProps => (
+                        <Field
+                          onChange={e => {
+                            setFieldValue('website', e.target.value);
+                          }}
+                          as={StyledInputGroup}
+                          {...inputProps}
+                          prepend="http://"
+                          placeholder={placeholders.website}
+                        />
+                      )}
+                    </StyledInputField>
+                  </Flex>
+                  <Flex flexDirection="column" width={[320, 350, 376, 476]} mx={[1, 10, 15]}>
+                    <H4>
+                      <FormattedMessage id="organization.coadmins.headline" defaultMessage="Administrators" />
+                    </H4>
+                    <P fontSize="14px" mb={2} lineHeight={2}>
+                      <FormattedMessage
+                        id="coAdminsDescription"
+                        defaultMessage="Organization admins can make changes in the profile and interact with other profiles on behalf of this organization."
                       />
-                    ),
-                )}
-              </div>
-            ))}
+                    </P>
+                    <Container border="1px solid #E6E8EB" borderRadius="8px" p={[2, 3]} height={[150, 200]}>
+                      <Flex flexDirection="row" alignItems="center">
+                        <P fontSize="10px" mb={2}>
+                          <FormattedMessage id="inviteAdmin" defaultMessage="INVITE CO-ADMIN" />
+                        </P>
+                        <StyledHr flex="1" borderStyle="solid" borderColor="black.300" width={[100, 110, 120]} />
+                      </Flex>
+                      <StyledTag m="4px" variant="rounded-right" maxHeight="none">
+                        <Avatar radius={20}></Avatar>
+                        Joyce
+                      </StyledTag>
+                      <StyledInputField
+                        name="name"
+                        htmlFor="name"
+                        error={touched.name && errors.name}
+                        value={values.name}
+                        required
+                        mt={4}
+                        mb={3}
+                        data-cy="cof-form-username"
+                      >
+                        {inputProps => <Field as={StyledInput} {...inputProps} placeholder={placeholders.username} />}
+                      </StyledInputField>
+                    </Container>
+                  </Flex>
+                </Container>
 
-            <div className="tos">
-              <label>{intl.formatMessage(this.messages['tos.label'])}</label>
-              <div data-cy="tos">
-                <StyledCheckbox
-                  name="tos"
-                  id="oc-tos-checkbox"
-                  required
-                  onChange={({ target }) => this.handleChange('tos', target.checked)}
-                  label={
-                    <FormattedMessage
-                      id="createcollective.tos.label"
-                      defaultMessage="I agree with the {toslink} of Open Collective."
-                      values={{
-                        toslink: (
-                          <StyledLink href="/tos" openInNewTab>
-                            <FormattedMessage id="tos" defaultMessage="terms of service" />
-                          </StyledLink>
-                        ),
+                <Flex flexDirection="column" my={4} mx={1} width={[320, 450]}>
+                  <StyledCheckbox
+                    name="tos"
+                    label={
+                      <FormattedMessage
+                        id="createorganization.tos.label"
+                        defaultMessage="I verify that I am an authorized representative of this organization and 
+                            have the right to act on its behalf."
+                      />
+                    }
+                    required
+                    onChange={({ checked }) => {
+                      this.setState({ tos: checked });
+                    }}
+                  />
+                  {!router.query.hostTos && host && host.termsUrl && (
+                    <StyledCheckbox
+                      alignItems="flex-start"
+                      name="hostTos"
+                      label={
+                        <FormattedMessage
+                          id="createorganization.hosttos.label"
+                          defaultMessage="I verify that I am an authorized representative of this organization and 
+                              have the right to act on its behalf."
+                        />
+                      }
+                      required
+                      onChange={({ checked }) => {
+                        this.setState({ hostTos: checked });
                       }}
                     />
-                  }
-                />
-              </div>
-            </div>
+                  )}
 
-            <div className="actions">
-              <StyledButton
-                buttonStyle="primary"
-                type="submit"
-                onClick={this.handleSubmit}
-                disabled={loading || !this.state.modified}
-              >
-                {loading ? (
-                  <FormattedMessage id="loading" defaultMessage="loading" />
-                ) : (
-                  <FormattedMessage id="organization.create" defaultMessage="Create organization" />
-                )}
-              </StyledButton>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+                  <Flex justifyContent={['center', 'left']} my={4}>
+                    <StyledButton
+                      fontSize="13px"
+                      minWidth="148px"
+                      minHeight="36px"
+                      buttonStyle="primary"
+                      type="submit"
+                      loading={loading}
+                      onSubmit={handleSubmit}
+                      data-cy="ccf-form-submit"
+                    >
+                      <FormattedMessage id="organization.create.button" defaultMessage="Create Organization" />
+                    </StyledButton>
+                  </Flex>
+                  <Box textAlign="left" minHeight="24px">
+                    <P fontSize="16px" color="black.600" mb={2}>
+                      <FormattedMessage
+                        id="createOrganization.tos"
+                        defaultMessage="By joining, you agree to our Terms of Service and Privacy Policy.
+                          Already have an account? "
+                      />
+                      <StyledLink>Sign in →</StyledLink>
+                    </P>
+                  </Box>
+                </Flex>
+              </Container>
+            </Form>
+          );
+        }}
+      </Formik>
+    </Flex>
+  );
 }
 
-export default injectIntl(CreateOrganizationForm);
+CreateOrganizationForm.propTypes = {
+  collective: PropTypes.object,
+  loading: PropTypes.bool,
+  onSubmit: PropTypes.func,
+  intl: PropTypes.object.isRequired,
+};
+export default injectIntl(withRouter(CreateOrganizationForm));
