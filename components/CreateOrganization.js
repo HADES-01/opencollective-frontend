@@ -4,7 +4,7 @@ import { get } from 'lodash';
 import { FormattedMessage } from 'react-intl';
 
 import { getErrorFromGraphqlException } from '../lib/errors';
-import { addCreateCollectiveMutation } from '../lib/graphql/mutations';
+import { addCreateCollectiveMutation } from './create-collective';
 import { Router } from '../server/pages';
 
 import Body from './Body';
@@ -39,33 +39,26 @@ class CreateOrganization extends React.Component {
     this.error();
   }
 
-  async createCollective(CollectiveInputType) {
-    if (!CollectiveInputType.tos) {
+  async createCollective(collective) {
+    if (!collective.authorization) {
       this.setState({
-        result: { error: 'Please accept the terms of service' },
-      });
-      return;
-    }
-    if (get(this.host, 'settings.tos') && !CollectiveInputType.hostTos) {
-      this.setState({
-        result: { error: 'Please accept the terms of fiscal sponsorship' },
+        result: { error: 'Please verify that you are an authorized representaive of this organization' },
       });
       return;
     }
 
     this.setState({ status: 'loading' });
-    CollectiveInputType.type = 'ORGANIZATION';
+    collective.type = 'ORGANIZATION';
+
+    delete collective.authorization;
 
     try {
-      const res = await this.props.createCollective(CollectiveInputType);
-      const collective = res.data.createCollective;
-      const collectiveUrl = `${window.location.protocol}//${window.location.host}/${collective.slug}?status=collectiveCreated&CollectiveId=${collective.id}`;
-      this.setState({
-        status: 'idle',
-        result: {
-          success: `Organization created successfully: ${collectiveUrl}`,
+      const res = await this.props.createCollective({
+        variables: {
+          collective,
         },
       });
+
       await this.props.refetchLoggedInUser();
       Router.pushRoute('collective', {
         CollectiveId: collective.id,
@@ -81,6 +74,7 @@ class CreateOrganization extends React.Component {
 
   render() {
     const { LoggedInUser } = this.props;
+    const { result } = this.state;
 
     const title = 'Create organization';
 
@@ -94,12 +88,6 @@ class CreateOrganization extends React.Component {
         />
 
         <Body>
-          {/* <Container mt={2} mb={2}>
-            <H1 fontSize="28px" lineHeight={3} fontWeight="bold" textAlign="center" color="black.900">
-              {title}
-            </H1>
-          </Container> */}
-
           <div className="content">
             {!LoggedInUser && (
               <Container textAlign="center">
@@ -112,17 +100,22 @@ class CreateOrganization extends React.Component {
                   collective={this.state.collective}
                   onSubmit={this.createCollective}
                   onChange={this.resetError}
+                  error={result.error}
+                  LoggedInUser={LoggedInUser}
                 />
-
-                <Container textAlign="center" marginBottom="5rem">
+                <Container
+                  textAlign="center"
+                  alignItems="center"
+                  justifyContent="center"
+                  marginBottom="5rem"
+                  width={[100, 200, 600]}
+                >
                   <Container color="green.500">{this.state.result.success}</Container>
-                  <Container color="red.500">{this.state.result.error}</Container>
                 </Container>
               </div>
             )}
           </div>
         </Body>
-
         <Footer />
       </div>
     );

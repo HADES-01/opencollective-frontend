@@ -8,9 +8,10 @@ import { defineMessages, FormattedMessage, injectIntl } from 'react-intl';
 import slugify from 'slugify';
 import styled from 'styled-components';
 
-import Avatar from './Avatar';
+import { ContributorAvatar } from './Avatar';
 import Container from './Container';
 import { Box, Flex } from './Grid';
+import MessageBox from './MessageBox';
 import StyledButton from './StyledButton';
 import StyledCheckbox from './StyledCheckbox';
 import StyledHr from './StyledHr';
@@ -32,7 +33,8 @@ const BackButton = styled(StyledButton)`
 
 const messages = defineMessages({
   nameLabel: { id: 'createOrg.form.nameLabel', defaultMessage: "What's the name of your organization?" },
-  urlLabel: { id: 'createOrg.form.urlLabel', defaultMessage: 'What URL would you like?' },
+  slugLabel: { id: 'createOrg.form.slugLabel', defaultMessage: 'What URL would you like?' },
+  suggestedLabel: { id: 'createOrg.form.suggestedLabel', defaultMessage: 'Suggested' },
   websiteLabel: { id: 'createOrg.form.webstiteLabel', defaultMessage: "What's your Organization's website" },
   suggestedLabel: { id: 'createOrg.form.suggestedLabel', defaultMessage: 'Suggested' },
   descriptionLabel: {
@@ -55,59 +57,55 @@ const messages = defineMessages({
     id: 'createOrg.form.error.description',
     defaultMessage: 'Please use fewer than 160 characters',
   },
-  errorSlug: {
-    id: 'createOrg.form.error.slug',
-    defaultMessage: 'Please use fewer than 30 characters',
+  errorWebsite: {
+    id: 'createOrg.form.error.website',
+    defaultMessage: 'Enter valid website format',
   },
 });
 
 const placeholders = {
   name: 'i.e. Salesforce, Airbnb',
-  url: 'airbnb',
+  slug: 'airbnb',
   description: 'Making a world a better place',
   website: 'www.airbnb.com',
   username: 'User name',
 };
 
-const formatGithubRepoName = repoName => {
-  // replaces dash and underscore with space, then capitalises the words
-  return repoName.replace(/[-_]/g, ' ').replace(/(?:^|\s)\S/g, words => words.toUpperCase());
-};
-
 function CreateOrganizationForm(props) {
-  const { intl, error, host, loading, github, router } = props;
-  const [tos, setTos] = useState('');
-
-  const submit = values => {
-    const { description, name, slug } = values;
-    // const { tos, hostTos } = this.state;
-    // this.props.onSubmit({ name, description, slug, tos, hostTos });
-  };
+  const { intl, error, loading, LoggedInUser, onSubmit } = props;
+  const [authorization, setAuthorization] = useState('');
   const initialValues = {
-    name: github ? formatGithubRepoName(github.repo) : '',
+    name: '',
+    slug: '',
     description: '',
-    slug: github ? github.repo : '',
+    website: '',
+    coAdmin: '',
   };
   const validate = values => {
     const errors = {};
 
-    if (values.name.length > 50) {
+    if (values.name.length > 2) {
       errors.name = intl.formatMessage(messages.errorName);
     }
-
-    if (values.slug.length > 30) {
-      errors.slug = intl.formatMessage(messages.errorSlug);
-    }
-    if (values.slug !== trim(values.slug, '-')) {
-      errors.slug = intl.formatMessage(messages.errorSlugHyphen);
-    }
-
-    if (values.description.length > 160) {
+    if (values.description.length > 1) {
       errors.description = intl.formatMessage(messages.errorDescription);
+    }
+    const websiteExpression = new RegExp(
+      /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi,
+    );
+    if (!values.match(websiteExpression)) {
+      errors.website = intl.formatMessage(messages.errorWebsite);
     }
 
     return errors;
   };
+  const submit = values => {
+    const { name, slug, description, website, coAdmin } = values;
+    onSubmit({ name, slug, description, website, authorization });
+  };
+
+  const LoggedInUserFullName = `${LoggedInUser.firstName} ${LoggedInUser.lastName}`;
+  const result = LoggedInUserFullName.replace(/\b[a-z]/g, x => x.toUpperCase());
   return (
     <Flex flexDirection="column" m={[3, 0]}>
       <Flex flexDirection="column" m={[3, 0]}>
@@ -131,9 +129,26 @@ function CreateOrganizationForm(props) {
           </Box>
         </Flex>
       </Flex>
+      {error && (
+        <Flex alignItems="center" justifyContent="center">
+          <MessageBox type="error" withIcon mb={[1, 3]} data-cy="cof-error-message">
+            {error}
+          </MessageBox>
+        </Flex>
+      )}
       <Formik validate={validate} initialValues={initialValues} onSubmit={submit} validateOnChange={true}>
         {formik => {
           const { values, handleSubmit, errors, touched, setFieldValue } = formik;
+          console.log(errors, 'errrrrr');
+          const suggestedSlug = value => {
+            const slugOptions = {
+              replacement: '-',
+              lower: true,
+              strict: true,
+            };
+
+            return trim(slugify(value, slugOptions), '-');
+          };
           const handleSlugChange = e => {
             if (!touched.slug) {
               setFieldValue('slug', suggestedSlug(e.target.value));
@@ -162,20 +177,19 @@ function CreateOrganizationForm(props) {
                       required
                       mt={4}
                       mb={3}
-                      data-cy="ccf-form-name"
+                      data-cy="cof-form-name"
                     >
                       {inputProps => <Field as={StyledInput} {...inputProps} placeholder={placeholders.name} />}
                     </StyledInputField>
                     <StyledInputField
                       name="slug"
                       htmlFor="slug"
-                      error={touched.url && errors.url}
-                      label={intl.formatMessage(messages.urlLabel)}
-                      value={values.url}
+                      error={touched.slug && errors.slug}
+                      label={intl.formatMessage(messages.slugLabel)}
+                      value={values.slug}
                       required
                       mt={3}
-                      mb={2}
-                      data-cy="cof-form-url"
+                      data-cy="cof-form-slug"
                     >
                       {inputProps => (
                         <Field
@@ -185,7 +199,7 @@ function CreateOrganizationForm(props) {
                           as={StyledInputGroup}
                           {...inputProps}
                           prepend="opencollective.com/"
-                          placeholder={placeholders.url}
+                          placeholder={placeholders.slug}
                         />
                       )}
                     </StyledInputField>
@@ -200,11 +214,13 @@ function CreateOrganizationForm(props) {
                       value={values.description}
                       required
                       mt={3}
-                      mb={2}
-                      data-cy="c0f-org-description"
+                      data-cy="cof-org-description"
                     >
                       {inputProps => (
                         <Field
+                          onChange={e => {
+                            setFieldValue('description', e.target.value);
+                          }}
                           as={StyledInput}
                           {...inputProps}
                           placeholder={intl.formatMessage(messages.descriptionPlaceholder)}
@@ -247,25 +263,35 @@ function CreateOrganizationForm(props) {
                       />
                     </P>
                     <Container border="1px solid #E6E8EB" borderRadius="8px" p={[2, 3]} height={[150, 200]}>
-                      <Flex flexDirection="row" alignItems="center">
-                        <P fontSize="10px" mb={2}>
+                      <Flex flexDirection="row" alignItems="center" justifyContent="space-around">
+                        <Flex fontSize="10px" mr={2}>
                           <FormattedMessage id="inviteAdmin" defaultMessage="INVITE CO-ADMIN" />
-                        </P>
+                        </Flex>
                         <StyledHr flex="1" borderStyle="solid" borderColor="black.300" width={[100, 110, 120]} />
                       </Flex>
-                      <StyledTag m="4px" variant="rounded-right" maxHeight="none">
-                        <Avatar radius={20}></Avatar>
-                        Joyce
+                      <StyledTag m={2} variant="rounded-right" maxHeight="none">
+                        <Flex mr={2}>
+                          <ContributorAvatar contributor={LoggedInUser} radius={20} type="USER" />
+                        </Flex>
+                        {result}
                       </StyledTag>
+                      <Flex flexDirection="row" alignItems="center" justifyContent="space-around" mt={4}>
+                        <Flex fontSize="10px" mr={2}>
+                          <FormattedMessage id="inviteAdmin" defaultMessage="INVITE CO-ADMIN" />
+                        </Flex>
+                        <StyledHr flex="1" borderStyle="solid" borderColor="black.300" width={[100, 110, 120]} />
+                      </Flex>
                       <StyledInputField
-                        name="name"
-                        htmlFor="name"
-                        error={touched.name && errors.name}
-                        value={values.name}
-                        required
-                        mt={4}
+                        name="coAdmin"
+                        htmlFor="coAdmin"
+                        error={touched.admin && errors.admin}
+                        value={values.admin}
+                        mt={2}
                         mb={3}
-                        data-cy="cof-form-username"
+                        data-cy="cof-form-coadmin"
+                        onChange={e => {
+                          setFieldValue('coAdmin', e.target.value);
+                        }}
                       >
                         {inputProps => <Field as={StyledInput} {...inputProps} placeholder={placeholders.username} />}
                       </StyledInputField>
@@ -275,36 +301,20 @@ function CreateOrganizationForm(props) {
 
                 <Flex flexDirection="column" my={4} mx={1} width={[320, 450]}>
                   <StyledCheckbox
-                    name="tos"
+                    name="authorization"
+                    required
                     label={
                       <FormattedMessage
-                        id="createorganization.tos.label"
+                        id="createorganization.authorization.label"
                         defaultMessage="I verify that I am an authorized representative of this organization and 
                             have the right to act on its behalf."
                       />
                     }
                     required
                     onChange={({ checked }) => {
-                      this.setState({ tos: checked });
+                      setAuthorization({ authorization: checked });
                     }}
                   />
-                  {!router.query.hostTos && host && host.termsUrl && (
-                    <StyledCheckbox
-                      alignItems="flex-start"
-                      name="hostTos"
-                      label={
-                        <FormattedMessage
-                          id="createorganization.hosttos.label"
-                          defaultMessage="I verify that I am an authorized representative of this organization and 
-                              have the right to act on its behalf."
-                        />
-                      }
-                      required
-                      onChange={({ checked }) => {
-                        this.setState({ hostTos: checked });
-                      }}
-                    />
-                  )}
 
                   <Flex justifyContent={['center', 'left']} my={4}>
                     <StyledButton
