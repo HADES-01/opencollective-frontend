@@ -3,8 +3,10 @@ import PropTypes from 'prop-types';
 import { get } from 'lodash';
 import { FormattedMessage } from 'react-intl';
 
+import { compose } from '../lib/utils';
 import { getErrorFromGraphqlException } from '../lib/errors';
 import { addCreateCollectiveMutation } from './create-collective';
+import { addEditCollectiveMembersMutation } from './onboarding-modal/OnboardingModal';
 import { Router } from '../server/pages';
 
 import Body from './Body';
@@ -39,7 +41,7 @@ class CreateOrganization extends React.Component {
     this.error();
   }
 
-  async createCollective(collective) {
+  async createCollective(collective, admins) {
     if (!collective.authorization) {
       this.setState({
         result: { error: 'Please verify that you are an authorized representaive of this organization' },
@@ -58,7 +60,24 @@ class CreateOrganization extends React.Component {
           collective,
         },
       });
-
+      console.log(admins, 'admins');
+      console.log(res.data.createCollective, '------d-------dd-----');
+      if (res) {
+        await this.props.editCollectiveMembers({
+          variables: {
+            collectiveId: res.data.createCollective.id,
+            members: admins.map(member => ({
+              id: member.id,
+              role: member.role,
+              member: {
+                id: member.member.id,
+                name: member.member.name,
+              },
+            })),
+          },
+        });
+      }
+      console.log('------pppp----');
       await this.props.refetchLoggedInUser();
       Router.pushRoute('collective', {
         CollectiveId: collective.id,
@@ -73,9 +92,8 @@ class CreateOrganization extends React.Component {
   }
 
   render() {
-    const { LoggedInUser } = this.props;
+    const { LoggedInUser, editCollectiveMemebers } = this.props;
     const { result } = this.state;
-
     const title = 'Create organization';
 
     return (
@@ -102,6 +120,7 @@ class CreateOrganization extends React.Component {
                   onChange={this.resetError}
                   error={result.error}
                   LoggedInUser={LoggedInUser}
+                  editCollectiveMemebers={editCollectiveMemebers}
                 />
                 <Container
                   textAlign="center"
@@ -122,4 +141,5 @@ class CreateOrganization extends React.Component {
   }
 }
 
-export default addCreateCollectiveMutation(CreateOrganization);
+const addGraphql = compose(addCreateCollectiveMutation, addEditCollectiveMembersMutation);
+export default addGraphql(CreateOrganization);

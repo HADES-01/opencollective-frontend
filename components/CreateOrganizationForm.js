@@ -8,6 +8,7 @@ import { defineMessages, FormattedMessage, injectIntl } from 'react-intl';
 import slugify from 'slugify';
 import styled from 'styled-components';
 
+import CollectivePickerAsync from './CollectivePickerAsync';
 import { ContributorAvatar } from './Avatar';
 import Container from './Container';
 import { Box, Flex } from './Grid';
@@ -64,16 +65,17 @@ const messages = defineMessages({
 });
 
 const placeholders = {
-  name: 'i.e. Salesforce, Airbnb',
-  slug: 'airbnb',
-  description: 'Making a world a better place',
-  website: 'www.airbnb.com',
-  username: 'User name',
+  name: { id: 'placeholder.name', defaultMessage: 'i.e. Salesforce, Airbnb' },
+  slug: { id: 'placeholder.slug', defaultMessage: 'Airbnb' },
+  description: { id: 'placeholderdescription', defaultMessage: 'Making a world a better place' },
+  website: { id: 'placeholder.website', defaultMessage: 'www.airbnb.com' },
+  username: { id: 'placeholder.username', defaultMessage: 'User name' },
 };
 
 function CreateOrganizationForm(props) {
   const { intl, error, loading, LoggedInUser, onSubmit } = props;
   const [authorization, setAuthorization] = useState('');
+  const [admins, setAdmins] = useState([]);
   const initialValues = {
     name: '',
     slug: '',
@@ -84,24 +86,24 @@ function CreateOrganizationForm(props) {
   const validate = values => {
     const errors = {};
 
-    if (values.name.length > 2) {
+    if (values.name.length > 50) {
       errors.name = intl.formatMessage(messages.errorName);
     }
-    if (values.description.length > 1) {
+    if (values.description.length > 150) {
       errors.description = intl.formatMessage(messages.errorDescription);
     }
     const websiteExpression = new RegExp(
       /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi,
     );
-    if (!values.match(websiteExpression)) {
+    if (!values.website.match(websiteExpression)) {
       errors.website = intl.formatMessage(messages.errorWebsite);
     }
 
     return errors;
   };
   const submit = values => {
-    const { name, slug, description, website, coAdmin } = values;
-    onSubmit({ name, slug, description, website, authorization });
+    const { name, slug, description, website } = values;
+    onSubmit({ name, slug, description, website, authorization }, admins);
   };
 
   const LoggedInUserFullName = `${LoggedInUser.firstName} ${LoggedInUser.lastName}`;
@@ -139,7 +141,6 @@ function CreateOrganizationForm(props) {
       <Formik validate={validate} initialValues={initialValues} onSubmit={submit} validateOnChange={true}>
         {formik => {
           const { values, handleSubmit, errors, touched, setFieldValue } = formik;
-          console.log(errors, 'errrrrr');
           const suggestedSlug = value => {
             const slugOptions = {
               replacement: '-',
@@ -153,6 +154,10 @@ function CreateOrganizationForm(props) {
             if (!touched.slug) {
               setFieldValue('slug', suggestedSlug(e.target.value));
             }
+          };
+          const handleCoAdminChange = option => {
+            const duplicates = admins.filter(admin => admin.member.id === option.value.id);
+            setAdmins(duplicates.length ? admins : [...admins, { role: 'ADMIN', member: option.value }]);
           };
           return (
             <Form>
@@ -179,7 +184,9 @@ function CreateOrganizationForm(props) {
                       mb={3}
                       data-cy="cof-form-name"
                     >
-                      {inputProps => <Field as={StyledInput} {...inputProps} placeholder={placeholders.name} />}
+                      {inputProps => (
+                        <Field as={StyledInput} {...inputProps} placeholder={intl.formatMessage(placeholders.name)} />
+                      )}
                     </StyledInputField>
                     <StyledInputField
                       name="slug"
@@ -199,7 +206,7 @@ function CreateOrganizationForm(props) {
                           as={StyledInputGroup}
                           {...inputProps}
                           prepend="opencollective.com/"
-                          placeholder={placeholders.slug}
+                          placeholder={intl.formatMessage(placeholders.slug)}
                         />
                       )}
                     </StyledInputField>
@@ -223,7 +230,7 @@ function CreateOrganizationForm(props) {
                           }}
                           as={StyledInput}
                           {...inputProps}
-                          placeholder={intl.formatMessage(messages.descriptionPlaceholder)}
+                          placeholder={intl.formatMessage(placeholders.description)}
                         />
                       )}
                     </StyledInputField>
@@ -247,7 +254,7 @@ function CreateOrganizationForm(props) {
                           as={StyledInputGroup}
                           {...inputProps}
                           prepend="http://"
-                          placeholder={placeholders.website}
+                          placeholder={intl.formatMessage(placeholders.website)}
                         />
                       )}
                     </StyledInputField>
@@ -281,20 +288,17 @@ function CreateOrganizationForm(props) {
                         </Flex>
                         <StyledHr flex="1" borderStyle="solid" borderColor="black.300" width={[100, 110, 120]} />
                       </Flex>
-                      <StyledInputField
-                        name="coAdmin"
-                        htmlFor="coAdmin"
-                        error={touched.admin && errors.admin}
-                        value={values.admin}
-                        mt={2}
-                        mb={3}
-                        data-cy="cof-form-coadmin"
-                        onChange={e => {
-                          setFieldValue('coAdmin', e.target.value);
+                      <CollectivePickerAsync
+                        creatable
+                        collective={null}
+                        types={['USER']}
+                        data-cy="admin-picker-org"
+                        value="pp"
+                        onChange={option => {
+                          handleCoAdminChange(option);
                         }}
-                      >
-                        {inputProps => <Field as={StyledInput} {...inputProps} placeholder={placeholders.username} />}
-                      </StyledInputField>
+                        placeholder={intl.formatMessage(placeholders.username)}
+                      />
                     </Container>
                   </Flex>
                 </Container>
@@ -315,7 +319,6 @@ function CreateOrganizationForm(props) {
                       setAuthorization({ authorization: checked });
                     }}
                   />
-
                   <Flex justifyContent={['center', 'left']} my={4}>
                     <StyledButton
                       fontSize="13px"
@@ -325,7 +328,7 @@ function CreateOrganizationForm(props) {
                       type="submit"
                       loading={loading}
                       onSubmit={handleSubmit}
-                      data-cy="ccf-form-submit"
+                      data-cy="cof-form-submit"
                     >
                       <FormattedMessage id="organization.create.button" defaultMessage="Create Organization" />
                     </StyledButton>
