@@ -18,7 +18,7 @@ class CreateOrganization extends React.Component {
   static propTypes = {
     host: PropTypes.object,
     createCollective: PropTypes.func,
-    editCollectiveMemebers: PropTypes.func,
+    editCollectiveMembers: PropTypes.func,
     LoggedInUser: PropTypes.object,
     refetchLoggedInUser: PropTypes.func.isRequired, // props coming from withUser
   };
