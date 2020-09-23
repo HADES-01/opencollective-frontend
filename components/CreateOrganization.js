@@ -60,14 +60,14 @@ class CreateOrganization extends React.Component {
           collective,
         },
       });
-      console.log(admins, 'admins');
+      console.log(admins[0], 'admins');
       console.log(res.data.createCollective, '------d-------dd-----');
       if (res) {
         await this.props.editCollectiveMembers({
           variables: {
-            collectiveId: res.data.createCollective.id,
+            collectiveId: res.data.createCollective.legacyId,
             members: admins.map(member => ({
-              id: member.id,
+              id: member.member.id,
               role: member.role,
               member: {
                 id: member.member.id,
