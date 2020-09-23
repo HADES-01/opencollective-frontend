@@ -38,6 +38,7 @@ class CreateOrganization extends React.Component {
   resetError() {
     this.error();
   }
+
   updateAdmins = admins => {
     this.setState({ admins });
   };

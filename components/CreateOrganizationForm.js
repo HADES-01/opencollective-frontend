@@ -144,7 +144,8 @@ function CreateOrganizationForm(props) {
           };
           const handleCoAdminChange = option => {
             const duplicates = admins.filter(admin => admin.member.id === option.value.id);
-            updateAdmins([{ role: 'ADMIN', member: option.value }]);
+            setAdmins([duplicates.length ? admins : { role: 'ADMIN', member: option.value }]);
+            updateAdmins(admins);
           };
           return (
             <Form>
@@ -345,6 +346,7 @@ CreateOrganizationForm.propTypes = {
   loading: PropTypes.bool,
   error: PropTypes.string,
   onSubmit: PropTypes.func,
+  updateAdmins: PropTypes.func,
   intl: PropTypes.object.isRequired,
 };
 export default injectIntl(withRouter(CreateOrganizationForm));
