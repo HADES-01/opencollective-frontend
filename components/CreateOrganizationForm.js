@@ -68,7 +68,7 @@ const placeholders = {
 };
 
 function CreateOrganizationForm(props) {
-  const { intl, error, loading, LoggedInUser, onSubmit } = props;
+  const { intl, error, loading, LoggedInUser, onSubmit, updateAdmins } = props;
   const [authorization, setAuthorization] = useState('');
   const [admins, setAdmins] = useState([]);
   const initialValues = {
@@ -91,7 +91,7 @@ function CreateOrganizationForm(props) {
   };
   const submit = values => {
     const { name, slug, description, website } = values;
-    onSubmit({ name, slug, description, website, authorization }, admins);
+    onSubmit({ name, slug, description, website, authorization });
   };
 
   const LoggedInUserFullName = `${LoggedInUser.firstName} ${LoggedInUser.lastName}`;
@@ -135,7 +135,6 @@ function CreateOrganizationForm(props) {
               lower: true,
               strict: true,
             };
-
             return trim(slugify(value, slugOptions), '-');
           };
           const handleSlugChange = e => {
@@ -145,7 +144,7 @@ function CreateOrganizationForm(props) {
           };
           const handleCoAdminChange = option => {
             const duplicates = admins.filter(admin => admin.member.id === option.value.id);
-            setAdmins(duplicates.length ? admins : [...admins, { role: 'ADMIN', member: option.value }]);
+            updateAdmins([{ role: 'ADMIN', member: option.value }]);
           };
           return (
             <Form>

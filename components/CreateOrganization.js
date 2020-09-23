@@ -25,7 +25,7 @@ class CreateOrganization extends React.Component {
 
   constructor(props) {
     super(props);
-    this.state = { collective: { type: 'ORGANIZATION' }, result: {} };
+    this.state = { collective: { type: 'ORGANIZATION' }, result: {}, admins: [] };
     this.createCollective = this.createCollective.bind(this);
     this.error = this.error.bind(this);
     this.resetError = this.resetError.bind(this);
@@ -38,8 +38,11 @@ class CreateOrganization extends React.Component {
   resetError() {
     this.error();
   }
+  updateAdmins = admins => {
+    this.setState({ admins });
+  };
 
-  async createCollective(collective, admins) {
+  async createCollective(collective) {
     if (!collective.authorization) {
       this.setState({
         result: { error: 'Please verify that you are an authorized representaive of this organization' },
@@ -53,17 +56,27 @@ class CreateOrganization extends React.Component {
     delete collective.authorization;
 
     try {
-      const res = await this.props.createCollective({
+      const response = await this.props.createCollective({
         variables: {
           collective,
         },
       });
-      if (res) {
+      if (response) {
+        await this.props.refetchLoggedInUser();
+        const member = await this.props.LoggedInUser.memberOf.filter(
+          member => member.collective.id === response.data.createCollective.legacyId,
+        );
+        this.setState({
+          admins: [
+            ...this.state.admins,
+            { role: 'ADMIN', member: this.props.LoggedInUser.collective, id: member[0].id },
+          ],
+        });
         await this.props.editCollectiveMembers({
           variables: {
-            collectiveId: res.data.createCollective.legacyId,
-            members: admins.map(member => ({
-              id: member.member.id,
+            collectiveId: response.data.createCollective.legacyId,
+            members: this.state.admins.map(member => ({
+              id: member.id,
               role: member.role,
               member: {
                 id: member.member.id,
@@ -115,6 +128,7 @@ class CreateOrganization extends React.Component {
                   onChange={this.resetError}
                   error={result.error}
                   LoggedInUser={LoggedInUser}
+                  updateAdmins={this.updateAdmins}
                 />
                 <Container
                   textAlign="center"
