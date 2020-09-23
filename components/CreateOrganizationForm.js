@@ -8,8 +8,8 @@ import { defineMessages, FormattedMessage, injectIntl } from 'react-intl';
 import slugify from 'slugify';
 import styled from 'styled-components';
 
-import CollectivePickerAsync from './CollectivePickerAsync';
 import { ContributorAvatar } from './Avatar';
+import CollectivePickerAsync from './CollectivePickerAsync';
 import Container from './Container';
 import { Box, Flex } from './Grid';
 import MessageBox from './MessageBox';
@@ -21,12 +21,8 @@ import StyledInputField from './StyledInputField';
 import StyledInputGroup from './StyledInputGroup';
 import StyledLink from './StyledLink';
 import StyledTag from './StyledTag';
-import { H1, P, H4 } from './Text';
+import { H1, H4, P } from './Text';
 
-const Wrapper = styled(Container)`
-  display: flex;
-  background-color: #e1e4e6;
-`;
 const BackButton = styled(StyledButton)`
   color: ${themeGet('colors.black.600')};
   font-size: 14px;
@@ -35,7 +31,6 @@ const BackButton = styled(StyledButton)`
 const messages = defineMessages({
   nameLabel: { id: 'createOrg.form.nameLabel', defaultMessage: "What's the name of your organization?" },
   slugLabel: { id: 'createOrg.form.slugLabel', defaultMessage: 'What URL would you like?' },
-  suggestedLabel: { id: 'createOrg.form.suggestedLabel', defaultMessage: 'Suggested' },
   websiteLabel: { id: 'createOrg.form.webstiteLabel', defaultMessage: "What's your Organization's website" },
   suggestedLabel: { id: 'createOrg.form.suggestedLabel', defaultMessage: 'Suggested' },
   descriptionLabel: {
@@ -92,13 +87,6 @@ function CreateOrganizationForm(props) {
     if (values.description.length > 150) {
       errors.description = intl.formatMessage(messages.errorDescription);
     }
-    const websiteExpression = new RegExp(
-      /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi,
-    );
-    if (!values.website.match(websiteExpression)) {
-      errors.website = intl.formatMessage(messages.errorWebsite);
-    }
-
     return errors;
   };
   const submit = values => {
@@ -314,7 +302,6 @@ function CreateOrganizationForm(props) {
                             have the right to act on its behalf."
                       />
                     }
-                    required
                     onChange={({ checked }) => {
                       setAuthorization({ authorization: checked });
                     }}
@@ -355,7 +342,9 @@ function CreateOrganizationForm(props) {
 
 CreateOrganizationForm.propTypes = {
   collective: PropTypes.object,
+  LoggedInUser: PropTypes.object,
   loading: PropTypes.bool,
+  error: PropTypes.string,
   onSubmit: PropTypes.func,
   intl: PropTypes.object.isRequired,
 };

@@ -1,26 +1,24 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { get } from 'lodash';
-import { FormattedMessage } from 'react-intl';
 
-import { compose } from '../lib/utils';
 import { getErrorFromGraphqlException } from '../lib/errors';
-import { addCreateCollectiveMutation } from './create-collective';
-import { addEditCollectiveMembersMutation } from './onboarding-modal/OnboardingModal';
+import { compose } from '../lib/utils';
 import { Router } from '../server/pages';
 
+import { addEditCollectiveMembersMutation } from './onboarding-modal/OnboardingModal';
 import Body from './Body';
 import Container from './Container';
+import { addCreateCollectiveMutation } from './create-collective';
 import CreateOrganizationForm from './CreateOrganizationForm';
 import Footer from './Footer';
 import Header from './Header';
 import SignInOrJoinFree from './SignInOrJoinFree';
-import { H1, P } from './Text';
 
 class CreateOrganization extends React.Component {
   static propTypes = {
     host: PropTypes.object,
     createCollective: PropTypes.func,
+    editCollectiveMemebers: PropTypes.func,
     LoggedInUser: PropTypes.object,
     refetchLoggedInUser: PropTypes.func.isRequired, // props coming from withUser
   };
@@ -60,8 +58,6 @@ class CreateOrganization extends React.Component {
           collective,
         },
       });
-      console.log(admins[0], 'admins');
-      console.log(res.data.createCollective, '------d-------dd-----');
       if (res) {
         await this.props.editCollectiveMembers({
           variables: {
@@ -77,7 +73,6 @@ class CreateOrganization extends React.Component {
           },
         });
       }
-      console.log('------pppp----');
       await this.props.refetchLoggedInUser();
       Router.pushRoute('collective', {
         CollectiveId: collective.id,
