@@ -87,8 +87,7 @@ class CreateOrganization extends React.Component {
   }
 
   render() {
-    const { LoggedInUser, editCollectiveMembers } = this.props;
-    console.log(this.props, '---props');
+    const { LoggedInUser } = this.props;
     const { result } = this.state;
     const title = 'Create organization';
 
