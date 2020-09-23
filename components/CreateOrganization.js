@@ -87,7 +87,8 @@ class CreateOrganization extends React.Component {
   }
 
   render() {
-    const { LoggedInUser, editCollectiveMemebers } = this.props;
+    const { LoggedInUser, editCollectiveMembers } = this.props;
+    console.log(this.props, '---props');
     const { result } = this.state;
     const title = 'Create organization';
 
@@ -115,7 +116,6 @@ class CreateOrganization extends React.Component {
                   onChange={this.resetError}
                   error={result.error}
                   LoggedInUser={LoggedInUser}
-                  editCollectiveMemebers={editCollectiveMemebers}
                 />
                 <Container
                   textAlign="center"
