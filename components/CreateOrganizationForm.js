@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import themeGet from '@styled-system/theme-get';
 import { Field, Form, Formik } from 'formik';
@@ -8,7 +8,6 @@ import { defineMessages, FormattedMessage, injectIntl } from 'react-intl';
 import slugify from 'slugify';
 import styled from 'styled-components';
 
-import { ContributorAvatar } from './Avatar';
 import CollectivePickerAsync from './CollectivePickerAsync';
 import Container from './Container';
 import { Box, Flex } from './Grid';
@@ -20,8 +19,10 @@ import StyledInput from './StyledInput';
 import StyledInputField from './StyledInputField';
 import StyledInputGroup from './StyledInputGroup';
 import StyledLink from './StyledLink';
-import StyledTag from './StyledTag';
+import StyledTextarea from './StyledTextarea';
 import { H1, H4, P } from './Text';
+
+import OnboardingProfileCard from './onboarding-modal/OnboardingProfileCard';
 
 const BackButton = styled(StyledButton)`
   color: ${themeGet('colors.black.600')};
@@ -94,8 +95,19 @@ function CreateOrganizationForm(props) {
     onSubmit({ name, slug, description, website, authorization });
   };
 
-  const LoggedInUserFullName = `${LoggedInUser.firstName} ${LoggedInUser.lastName}`;
-  const result = LoggedInUserFullName.replace(/\b[a-z]/g, x => x.toUpperCase());
+  const removeAdmin = collective => {
+    const filteredAdmins = admins.filter(admin => admin.member.id !== collective.id);
+    setAdmins(filteredAdmins);
+    updateAdmins(admins);
+  };
+
+  // Update admins whenever there is a change
+  useEffect(() => {
+    if (admins.length) {
+      updateAdmins(admins);
+    }
+  }, [admins]);
+
   return (
     <Flex flexDirection="column" m={[3, 0]}>
       <Flex flexDirection="column" m={[3, 0]}>
@@ -141,11 +153,6 @@ function CreateOrganizationForm(props) {
             if (!touched.slug) {
               setFieldValue('slug', suggestedSlug(e.target.value));
             }
-          };
-          const handleCoAdminChange = option => {
-            const duplicates = admins.filter(admin => admin.member.id === option.value.id);
-            setAdmins([duplicates.length ? admins : { role: 'ADMIN', member: option.value }]);
-            updateAdmins(admins);
           };
           return (
             <Form>
@@ -206,18 +213,22 @@ function CreateOrganizationForm(props) {
                       htmlFor="description"
                       error={touched.description && errors.description}
                       label={intl.formatMessage(messages.descriptionLabel)}
-                      value={values.description}
                       required
                       mt={3}
                       data-cy="cof-org-description"
                     >
                       {inputProps => (
-                        <Field
+                        <StyledTextarea
+                          {...inputProps}
+                          as={StyledInput}
+                          width="100%"
+                          minHeight={80}
                           onChange={e => {
                             setFieldValue('description', e.target.value);
                           }}
-                          as={StyledInput}
-                          {...inputProps}
+                          minLength={5}
+                          maxLength={150}
+                          value={values.description}
                           placeholder={intl.formatMessage(placeholders.description)}
                         />
                       )}
@@ -264,12 +275,26 @@ function CreateOrganizationForm(props) {
                         </Flex>
                         <StyledHr flex="1" borderStyle="solid" borderColor="black.300" width={[100, 110, 120]} />
                       </Flex>
-                      <StyledTag m={2} variant="rounded-right" maxHeight="none">
-                        <Flex mr={2}>
-                          <ContributorAvatar contributor={LoggedInUser} radius={20} type="USER" />
-                        </Flex>
-                        {result}
-                      </StyledTag>
+                      <Flex flexWrap="wrap" data-cy="org-profile-card">
+                        <OnboardingProfileCard
+                          key={LoggedInUser.collective.id}
+                          collective={LoggedInUser.collective}
+                          adminCollective={LoggedInUser.collective}
+                          removeAdmin={removeAdmin}
+                        />
+                        {admins.length > 0 && (
+                          <Flex mt={1} width="100%" flexWrap="wrap">
+                            {admins.map(admin => (
+                              <OnboardingProfileCard
+                                key={admin.member.id}
+                                collective={admin.member}
+                                adminCollective={LoggedInUser.collective}
+                                removeAdmin={removeAdmin}
+                              />
+                            ))}
+                          </Flex>
+                        )}
+                      </Flex>
                       <Flex flexDirection="row" alignItems="center" justifyContent="space-around" mt={4}>
                         <Flex fontSize="10px" mr={2}>
                           <FormattedMessage id="inviteAdmin" defaultMessage="INVITE CO-ADMIN" />
@@ -283,7 +308,8 @@ function CreateOrganizationForm(props) {
                         data-cy="admin-picker-org"
                         value="pp"
                         onChange={option => {
-                          handleCoAdminChange(option);
+                          const duplicates = admins.filter(admin => admin.member.id === option.value.id);
+                          setAdmins(duplicates.length ? admins : [...admins, { role: 'ADMIN', member: option.value }]);
                         }}
                         placeholder={intl.formatMessage(placeholders.username)}
                       />
@@ -321,13 +347,23 @@ function CreateOrganizationForm(props) {
                     </StyledButton>
                   </Flex>
                   <Box textAlign="left" minHeight="24px">
-                    <P fontSize="16px" color="black.600" mb={2}>
+                    <P fontSize="16px" mb={2}>
                       <FormattedMessage
                         id="createOrganization.tos"
-                        defaultMessage="By joining, you agree to our Terms of Service and Privacy Policy.
-                          Already have an account? "
+                        defaultMessage="By joining, you agree to our {tos} and {privacy}.
+                          Already have an account?  {signinlink}"
+                        values={{
+                          signinlink: (
+                            <StyledLink href={''} openInNewTab>
+                              <FormattedMessage id="signinlink" defaultMessage="Sign in →" />
+                            </StyledLink>
+                          ),
+                          tos: <FormattedMessage color="black.800" id="tos.org" defaultMessage="Terms of Service" />,
+                          privacy: (
+                            <FormattedMessage color="black.600" id="privacy.org" defaultMessage="Privacy Policy" />
+                          ),
+                        }}
                       />
-                      <StyledLink>Sign in →</StyledLink>
                     </P>
                   </Box>
                 </Flex>

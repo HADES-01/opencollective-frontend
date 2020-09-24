@@ -20,7 +20,7 @@ class CreateOrganization extends React.Component {
     createCollective: PropTypes.func,
     editCollectiveMembers: PropTypes.func,
     LoggedInUser: PropTypes.object,
-    refetchLoggedInUser: PropTypes.func.isRequired, // props coming from withUser
+    refetchLoggedInUser: PropTypes.func.isRequired,
   };
 
   constructor(props) {
