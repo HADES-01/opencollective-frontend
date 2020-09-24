@@ -8,6 +8,7 @@ import { defineMessages, FormattedMessage, injectIntl } from 'react-intl';
 import slugify from 'slugify';
 import styled from 'styled-components';
 
+import OnboardingProfileCard from './onboarding-modal/OnboardingProfileCard';
 import CollectivePickerAsync from './CollectivePickerAsync';
 import Container from './Container';
 import { Box, Flex } from './Grid';
@@ -21,8 +22,6 @@ import StyledInputGroup from './StyledInputGroup';
 import StyledLink from './StyledLink';
 import StyledTextarea from './StyledTextarea';
 import { H1, H4, P } from './Text';
-
-import OnboardingProfileCard from './onboarding-modal/OnboardingProfileCard';
 
 const BackButton = styled(StyledButton)`
   color: ${themeGet('colors.black.600')};
